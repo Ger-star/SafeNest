@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeNest v1.0 Smart Control</title>
+    <!-- Подключаем Telegram WebApp API, Firebase, Иконки и Графики -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-surface: #13131a;
+            --bg-widget: #1c1c24;
+            --border-color: #262632;
+            --text-main: #f4f4f5;
+            --text-muted: #71717a;
+            --color-safe: #10b981;
+            --color-danger: #ef4444;
+            --color-accent: #38bdf8;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 440px;
+            background: var(--bg-surface);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+        }
+
+        .brand-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .logo-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-svg {
+            width: 35px;
+            height: 35px;
+            fill: none;
+            stroke: var(--color-accent);
+            stroke-width: 2;
+        }
+        .brand-name {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background: linear-gradient(45deg, #38bdf8, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .lang-selector {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-primary);
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .lang-btn.active {
+            background: var(--color-accent);
+            color: var(--bg-primary);
+        }
+
+        .sys-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background-color: var(--text-muted);
+            box-shadow: 0 0 6px var(--text-muted);
+            transition: 0.3s;
+        }
+        .status-dot.online {
+            background-color: var(--color-safe);
+            box-shadow: 0 0 10px var(--color-safe);
+        }
+
+        .radial-dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .gauge-window {
+            position: relative; width: 180px; height: 180px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .gauge-svg {
+            position: absolute; top: 0; left: 0;
+            transform: rotate(-90deg);
+        }
+        .gauge-track { stroke: var(--border-color); stroke-width: 12; fill: none; }
+        .gauge-progress {
+            stroke: var(--color-safe); stroke-width: 12; fill: none;
+            stroke-dasharray: 502; stroke-dashoffset: 502;
+            transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
+            stroke-linecap: round;
+        }
+        .gauge-center-text { text-align: center; z-index: 2; }
+        .co-num { font-size: 32px; font-weight: 800; color: var(--color-safe); transition: 0.3s; }
+        .co-unit { font-size: 12px; color: var(--text-muted); margin-top: -2px; font-weight: bold; }
+
+        .widgets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+        .card {
+            background: var(--bg-widget); border-radius: 16px; padding: 12px 15px;
+            border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;
+        }
+        .card-icon { color: var(--color-accent); font-size: 14px; margin-bottom: 2px; }
+        .card-lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .card-val { font-size: 20px; font-weight: 700; color: var(--text-main); }
+
+        .control-panel { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; width: 100%; }
+        .ctrl-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--bg-widget); padding: 12px 16px; border-radius: 14px;
+            border: 1px solid var(--border-color);
+        }
+        .ctrl-column {
+            display: flex; flex-direction: column; gap: 8px;
+            background: var(--bg-widget); padding: 12px 16px; border-radius: 14px;
+            border: 1px solid var(--border-color);
+        }
+        .ctrl-info { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+        .ctrl-info i { color: var(--text-muted); width: 16px; text-align: center; }
+
+        .switch { position: relative; display: inline-block; width: 42px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #2d2d3d; transition: .2s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
+            background-color: #fff; transition: .2s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--color-accent); }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        .range-slider {
+            -webkit-appearance: none; width: 110px; height: 6px;
+            background: #2d2d3d; border-radius: 3px; outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+            border-radius: 50%; background: var(--color-accent); cursor: pointer;
+        }
+
+        .siren-selector {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; width: 100%; margin-top: 4px;
+        }
+        .siren-btn {
+            background: #2d2d3d; color: var(--text-muted); border: 1px solid var(--border-color);
+            padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .siren-btn.active {
+            background: rgba(56, 189, 248, 0.15); color: var(--color-accent); border-color: var(--color-accent);
+        }
+
+        .action-btn {
+            background: var(--bg-widget); color: var(--text-main); border: 1px solid var(--border-color);
+            padding: 12px; border-radius: 14px; font-weight: 600; font-size: 14px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s;
+        }
+        .action-btn:active { background: var(--border-color); }
+        .action-btn i { color: var(--color-accent); }
+        .btn-panic { border-color: rgba(239, 68, 68, 0.3); }
+        .btn-panic i { color: var(--color-danger); }
+
+        .chart-wrapper {
+            background: var(--bg-widget); border-radius: 16px; padding: 12px;
+            border: 1px solid var(--border-color); margin-top: 15px; width: 100%; box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="brand-header">
+        <div class="logo-box">
+            <svg class="logo-svg" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 8l-4 3h2v4h4v-4h2z" fill="currentColor" stroke="none"/>
+            </svg>
+            <div class="brand-name">SafeNest v1.0</div>
+        </div>
+        
+        <div class="lang-selector">
+            <button class="lang-btn" id="btn_kz" onclick="setLanguage(0)">KZ</button>
+            <button class="lang-btn active" id="btn_ru" onclick="setLanguage(1)">RU</button>
+            <button class="lang-btn" id="btn_en" onclick="setLanguage(2)">EN</button>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; width: 100%; padding: 0 5px; margin-bottom: 10px; box-sizing: border-box;">
+        <div class="sys-status"><span id="statusNode" class="status-dot"></span> <span id="lbl_sync">Синхронизация...</span></div>
+        <div class="sys-status" style="font-size: 11px;"><i class="fa-solid fa-clock"></i> <span id="uptimeVal">0 ч.</span></div>
+    </div>
+
+    <!-- Дашборд газа -->
+    <div class="radial-dashboard">
+        <div class="gauge-window">
+            <svg class="gauge-svg" width="180" height="180">
+                <circle class="gauge-track" cx="90" cy="90" r="80"/>
+                <circle id="gaugeFill" class="gauge-progress" cx="90" cy="90" r="80"/>
+            </svg>
+            <div class="gauge-center-text">
+                <div id="coValue" class="co-num">0.0</div>
+                <div class="co-unit">PPM CO</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Климатические карточки -->
+    <div class="widgets-grid">
+        <div class="card">
+            <i class="fa-solid fa-temperature-half card-icon"></i>
+            <span id="lbl_temp" class="card-lbl">Температура</span>
+            <span id="tempValue" class="card-val">--.- °C</span>
+        </div>
+        <div class="card">
+            <i class="fa-solid fa-droplet card-icon"></i>
+            <span id="lbl_hum" class="card-lbl">Влажность</span>
+            <span id="humValue" class="card-val">--.- %</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 12px;">
+        <i class="fa-solid fa-face-smile card-icon"></i>
+        <span id="lbl_feels" class="card-lbl">Индекс тепла (Ощущается как)</span>
+        <span id="hiValue" class="card-val">--.- °C</span>
+    </div>
+
+    <!-- Панель управления -->
+    <div class="control-panel">
+        <div class="ctrl-row">
+            <div class="ctrl-info"><i class="fa-solid fa-volume-xmark"></i> <span id="lbl_mute">Глушить сирену (Mute)</span></div>
+            <label class="switch">
+                <input type="checkbox" id="muteToggle" onchange="writeControl('is_muted', this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="ctrl-row">
+            <div class="ctrl-info"><i class="fa-solid fa-lightbulb"></i> <span id="lbl_lcd">Подсветка LCD экрана</span></div>
+            <label class="switch">
+                <input type="checkbox" id="lcdToggle" onchange="writeControl('lcd_backlight', this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="ctrl-row">
+            <div class="ctrl-info"><i class="fa-solid fa-rotate"></i> <span id="lbl_carousel">Карусель экранов (10с)</span></div>
+            <label class="switch">
+                <input type="checkbox" id="carouselToggle" onchange="writeControl('carousel_enabled', this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="ctrl-row">
+            <div class="ctrl-info"><i class="fa-solid fa-sliders"></i> <span id="lbl_thresh">Порог:</span> <b id="threshLabel">100</b> PPM</div>
+            <input type="range" id="threshSlider" class="range-slider" min="10" max="500" value="100" onchange="writeControl('threshold', parseFloat(this.value))">
+        </div>
+
+        <div class="ctrl-column">
+            <div class="ctrl-info"><i class="fa-solid fa-music"></i> <span id="lbl_siren_select">Тональность дабыла / Звук сирены:</span></div>
+            <div class="siren-selector">
+                <button class="siren-btn" id="siren_0" onclick="writeControl('siren_mode', 0)">Стандарт</button>
+                <button class="siren-btn" id="siren_1" onclick="writeControl('siren_mode', 1)">Полиция</button>
+                <button class="siren-btn" id="siren_2" onclick="writeControl('siren_mode', 2)">Клик</button>
+            </div>
+        </div>
+
+        <button class="action-btn" onclick="triggerSnap()">
+            <i class="fa-solid fa-camera"></i> <span id="lbl_btn_photo">Запросить экспресс-фото</span>
+        </button>
+
+        <button class="action-btn btn-panic" onclick="requestReboot()">
+            <i class="fa-solid fa-power-off"></i> <span id="lbl_btn_reboot">Перезагрузить ноду SafeNest</span>
+        </button>
+    </div>
+
+    <!-- График аналитики -->
+    <div class="chart-wrapper">
+        <canvas id="coChart" height="120"></canvas>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = { databaseURL: "https://safenest2508-default-rtdb.firebaseio.com/" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentLang = 1;
+let current_t = 0, current_h = 0, current_co_ppm = 0, heat_index = 0, CO_PPM_THRESHOLD = 100;
+let isMuted = false, lcdBacklightOn = true, carouselEnabled = true, sirenMode = 0;
+
+let userTelegramId = "";
+try {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const webapp = window.Telegram.WebApp;
+        webapp.ready();
+        if (webapp.initDataUnsafe && webapp.initDataUnsafe.user) {
+            userTelegramId = webapp.initDataUnsafe.user.id.toString();
+            db.ref("control/user_tg_id").set(userTelegramId);
+        }
+    }
+} catch(e) { console.log(e); }
+
+const localization = {
+    0: { // KZ
+        sync: "Қосылулы", temp: "Температура", hum: "Ылғалдылық", feels: "Сезілуі (Heat Index)",
+        mute: "Дабылды өшіру (Mute)", lcd: "LCD экран жарығы", carousel: "Карусель режимі (10с)",
+        thresh: "Шек:", b_photo: "Жедел фото сұрау", b_reboot: "Жүйені қайта жүктеу", s_select: "Дабыл түрін таңдау:"
+    },
+    1: { // RU
+        sync: "В сети", temp: "Температура", hum: "Влажность", feels: "Индекс тепла (Ощущается)",
+        mute: "Глушить сирену (Mute)", lcd: "Подсветка LCD экрана", carousel: "Карусель экранов (10с)",
+        thresh: "Порог:", b_photo: "Запросить экспресс-фото", b_reboot: "Перезагрузить ноду SafeNest", s_select: "Выбор звука сирены:"
+    },
+    2: { // EN
+        sync: "Online", temp: "Temperature", hum: "Humidity", feels: "Heat Index (Feels Like)",
+        mute: "Mute Siren Buzzer", lcd: "LCD Backlight Control", carousel: "Carousel Mode (10s)",
+        thresh: "Limit:", b_photo: "Trigger Express Photo", b_reboot: "Hard Reboot SafeNest", s_select: "Siren Sound Profile:"
+    }
+};
+
+const chartCtx = document.getElementById('coChart').getContext('2d');
+const coChart = new Chart(chartCtx, {
+    type: 'line',
+    data: {
+        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+        datasets: [{
+            data: [15, 22, 18, 30, 25, 20],
+            borderColor: '#38bdf8',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.4,
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { color: '#71717a', font: { size: 10 } } },
+            y: { grid: { color: '#1c1c24' }, ticks: { color: '#71717a', font: { size: 10 } } }
+        }
+    }
+});
+
+function applyLocalization() {
+    const lang = localization[currentLang];
+    document.getElementById("lbl_sync").innerText = lang.sync;
+    document.getElementById("lbl_temp").innerText = lang.temp;
+    document.getElementById("lbl_hum").innerText = lang.hum;
+    document.getElementById("lbl_feels").innerText = lang.feels;
+    document.getElementById("lbl_mute").innerText = lang.mute;
+    document.getElementById("lbl_lcd").innerText = lang.lcd;
+    document.getElementById("lbl_carousel").innerText = lang.carousel;
+    document.getElementById("lbl_thresh").innerText = lang.thresh;
+    document.getElementById("lbl_siren_select").innerText = lang.s_select;
+    document.getElementById("lbl_btn_photo").innerText = lang.b_photo;
+    document.getElementById("lbl_btn_reboot").innerText = lang.b_reboot;
+
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    if(currentLang === 0) document.getElementById("btn_kz").classList.add('active');
+    if(currentLang === 1) document.getElementById("btn_ru").classList.add('active');
+    if(currentLang === 2) document.getElementById("btn_en").classList.add('active');
+}
+
+function setLanguage(langIdx) {
+    currentLang = langIdx; 
+    applyLocalization(); 
+    writeControl('current_lang', langIdx);
+}
+
+db.ref("telemetry").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if(data) {
+        current_t = data.temperature || 0; 
+        current_h = data.humidity || 0; 
+        current_co_ppm = data.co_ppm || 0; 
+        heat_index = data.heat_index || 0;
+        CO_PPM_THRESHOLD = data.threshold || 100; 
+        isMuted = data.is_muted || false; 
+        lcdBacklightOn = data.lcd_backlight !== undefined ? data.lcd_backlight : true;
+        carouselEnabled = data.carousel_enabled !== undefined ? data.carousel_enabled : true; 
+        sirenMode = data.siren_mode !== undefined ? data.siren_mode : 0;
+        currentLang = data.current_lang !== undefined ? data.current_lang : 1;
+
+        document.getElementById("tempValue").innerText = current_t.toFixed(1) + " °C";
+        document.getElementById("humValue").innerText = current_h.toFixed(1) + " %";
+        document.getElementById("hiValue").innerText = heat_index.toFixed(1) + " °C";
+        document.getElementById("coValue").innerText = current_co_ppm.toFixed(1);
+        document.getElementById("threshLabel").innerText = CO_PPM_THRESHOLD;
+        document.getElementById("uptimeVal").innerText = data.uptime || "0 ч.";
+
+        document.getElementById("threshSlider").value = CO_PPM_THRESHOLD;
+        document.getElementById("muteToggle").checked = isMuted;
+        document.getElementById("lcdToggle").checked = lcdBacklightOn;
+        document.getElementById("carouselToggle").checked = carouselEnabled;
+
+        document.querySelectorAll('.siren-btn').forEach(b => b.classList.remove('active'));
+        const activeSirenBtn = document.getElementById("siren_" + sirenMode);
+        if(activeSirenBtn) activeSirenBtn.classList.add('active');
+
+        const progress = document.getElementById("gaugeFill");
+        const maxPadded = Math.max(CO_PPM_THRESHOLD, 300);
+        const offset = 502 - (Math.min(current_co_ppm / maxPadded, 1) * 502);
+        progress.style.strokeDashoffset = offset;
+
+        if (current_co_ppm >= CO_PPM_THRESHOLD) {
+            progress.style.stroke = "var(--color-danger)"; 
+            document.getElementById("coValue").style.color = "var(--color-danger)";
+        } else {
+            progress.style.stroke = "var(--color-safe)"; 
+            document.getElementById("coValue").style.color = "var(--color-safe)";
+        }
+
+        firebase.database().ref(".info/serverTimeOffset").once("value", (offsetSnap) => {
+            const isOnline = ((Date.now() + (offsetSnap.val() || 0)) - (data.last_seen || 0)) < 12000;
+            document.getElementById("statusNode").className = isOnline ? "status-dot online" : "status-dot";
+        });
+
+        applyLocalization();
+    }
+});
+
+function writeControl(node, val) { db.ref("control/" + node).set(val); }
+function triggerSnap() { writeControl('command_snap', true); setTimeout(() => writeControl('command_snap', false), 1500); }
+function requestReboot() { if(confirm(currentLang === 1 ? "Перезагрузить ноду SafeNest v1.0?" : "Reboot device?")) writeControl('command_reboot', true); }
+</script>
+
+</body>
+</html>
