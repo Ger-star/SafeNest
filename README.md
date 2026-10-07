@@ -9,7 +9,7 @@ SafeNest is a dual-microcontroller embedded system designed for real-time enviro
 SafeNest evolved from direct UART communication to a robust, cloud-mediated architecture:
 *   **Main Node (ESP32):** Handles environmental telemetry (temperature, humidity, CO gas levels), local UI via an I2C LCD, and hazard alarms. It utilizes a multi-threaded FreeRTOS architecture.
 *   **Camera Node (ESP32-CAM):** Operates as an asynchronous visual security module. It polls Firebase for snapshot commands and dispatches images securely via the HTTPS Telegram Bot API.
-*   **Web Dashboard:** A client-side HTML interface for remote monitoring and manual control overrides.
+*   **Web Dashboard:** A client-side HTML interface for remote monitoring and manual control overrides.Firebase rules are not closed yet.
 
 ## Repository Structure
 
