@@ -8,7 +8,7 @@
 | **Camera Controller** | AI-Thinker ESP32-CAM (OV2640) | Wi-Fi, HTTPS Telegram API | Cloud-polled visual capture node for remote security photo dispatch[cite: 1]. |
 | **Carbon Monoxide Sensor** | MQ-9 Gas Sensor | Analog Input (Pin 34 via 11dB attenuation) | Measures CO levels using analog voltage conversion[cite: 1]. |
 | **Climate Sensor** | DHT22 (AM2302) | Single-Wire Digital (Pin 23) | Monitors room temperature and humidity[cite: 1]. |
-| **Local Display** | 20×4 LCD with PCF8574 I2C Adapter | I2C (SDA Pin 21, SCL Pin 22) | Displays local multi-language telemetry and alarm status[cite: 1]. |
+| **Local Display** | I2C 16×2 LCD with PCF8574 I2C Adapter | I2C (SDA Pin 21, SCL Pin 22) | Displays local multi-language telemetry and alarm status[cite: 1]. |
 | **Audible Alarm** | Passive Piezo Buzzer | PWM (Pin 25, Core 0 FreeRTOS) | Generates non-blocking local siren patterns[cite: 1]. |
 | **Power Stabilization** | 470 µF Electrolytic Capacitor | Power Rail | Filters current spikes and prevents power drops during camera operation. |
 
