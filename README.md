@@ -18,4 +18,4 @@ SafeNest evolved from direct UART communication to a robust, cloud-mediated arch
 *   `/web/` - Client-side HTML dashboard.
 *   `/hardware/` - Schematics, component lists, and physical prototype photos.
 *   `/documentation/` - Architecture logs, testing results, and engineering notes.
-*   `/ip/` - Legal protection for written code.
+*   `/registered_copyright/` - Legal protection for written code.
