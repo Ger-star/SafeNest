@@ -25,5 +25,5 @@
 * **Solution:** Added a 470 µF decoupling capacitor across the power rails and disabled the software brownout detector (`WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0)`) in the camera firmware to ensure continuous execution
 
 ### 3. Architecture Evolution (UART to Cloud Synchronization)
-* **Initial Concept:** Inter-controller communication was originally designed over direct physical UART serial lines[cite: 4].
+* **Initial Concept:** Inter-controller communication was originally designed over direct physical UART serial lines
 * **Final Implementation:** To eliminate communication locks and physical pin conflicts, communication was moved to a decoupled cloud-polled model using the Firebase Realtime Database `/control/command_snap` node
